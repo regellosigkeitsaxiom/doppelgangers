@@ -19,6 +19,7 @@ import Control.Exception ( catch
                          )
 import System.Directory
 import System.Console.ANSI
+import Text.Read
 
 
 main :: IO ()
@@ -33,16 +34,19 @@ cleaner (h, fs) = do
     putStrLn "\nFound files with same hashes:"
     addNumber fs
     setSGR [ Reset, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green ]
-    putStr "Only one will left. Which? "
+    putStr "Only one will be left. Which? "
     setSGR [ Reset ]
     hFlush stdout
     x <- getLine
-    d <- catch ( return $ Just $ fs !! ( (read $ head $ lines x ) - 1 ))
-               ( \e -> print ( e :: SomeException ) >> return Nothing )
-    killMan fs d
+    killMan fs ( que x fs )
+
+que :: String -> [ String ] -> Maybe String
+que x y = case readMaybe x :: Maybe Int of
+  Just n -> if length y >= n then Just ( y !! (n-1)) else Nothing
+  Nothing -> Nothing
 
 killMan :: [ FilePath ] -> Maybe FilePath -> IO ()
-killMan fs Nothing = putStrLn "Some error occured. Sparing innocent."
+killMan fs Nothing = putStrLn "Some error occured. Sparing innocents."
 killMan fs (Just f) = deleteRogues fs f >> ( putStrLn $ f ++ " survived. Others not.")
 
 deleteRogues :: [ FilePath ] -> FilePath -> IO ()
