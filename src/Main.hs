@@ -9,7 +9,13 @@ import qualified Data.ByteString.Char8 as C8
 import System.Environment ( getArgs )
 import Data.List ( delete )
 import Control.Exception ( catch , SomeException)
-import System.Directory ( removeFile, doesFileExist, listDirectory, withCurrentDirectory )
+import System.Directory
+  ( removeFile
+  , doesFileExist
+  , listDirectory
+  , withCurrentDirectory
+  , doesDirectoryExist
+  )
 import System.Console.ANSI
 import Text.Read ( readMaybe )
 import Control.Monad ( foldM, filterM )
@@ -20,7 +26,11 @@ main = do
     args <- getArgs
     case args of
       [] -> putStrLn "Please specify one directory or list of files"
-      [a] -> withCurrentDirectory a ( listDirectory a >>= work )
+      [a] -> do
+        que <- doesDirectoryExist a
+        if que
+        then withCurrentDirectory a ( listDirectory a >>= work )
+        else putStrLn "Giving me one file makes no sense. Give me either directory or list of files."
       _ -> work args
 
 work :: [ FilePath ] -> IO ()
