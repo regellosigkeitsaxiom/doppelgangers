@@ -1,7 +1,9 @@
+nix:
+  packages:
+    - binutils
 flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-extra-deps:
-- Hclip-3.0.0.3
-resolver: lts-3.18
+extra-deps: []
+resolver: lts-8.22

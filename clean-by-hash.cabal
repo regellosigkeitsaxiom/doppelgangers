@@ -17,8 +17,7 @@ executable clean-by-hash
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
-                     , murmur-hash == 0.1.0.8
-                     , Hclip == 3.0.0.3
-                     , directory == 1.2.2.0
-                     , bytestring == 0.10.6.0
-                     , ansi-terminal == 0.6.2.3
+                     , murmur-hash
+                     , directory
+                     , bytestring
+                     , ansi-terminal

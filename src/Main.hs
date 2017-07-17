@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Main where
 
 {--
@@ -9,7 +10,6 @@ delete others
 
 import System.IO
 import Data.Digest.Murmur32
-import System.Hclip
 import qualified Data.ByteString as B
 import System.Environment
 import Data.Maybe
@@ -20,13 +20,16 @@ import Control.Exception ( catch
 import System.Directory
 import System.Console.ANSI
 import Text.Read
+import Control.Monad ( foldM )
 
 
 main :: IO ()
 main = do
     args <- getArgs
-    foo <- sequence $ map makeFileHash args
-    let hashes = rollFilter . roll . hSort . clear $ foo
+    --foo <- sequence $ map makeHashWrapper args
+    allHashes <- rollHashes args
+    --let hashes = rollFilter . roll . hSort . clear $ foo
+    let hashes = rollFilter allHashes
     sequence_ $ map cleaner hashes
 
 cleaner :: ( Hash32, [ FilePath ] ) -> IO ()
@@ -70,8 +73,8 @@ hSort = sortBy foo
 clear :: [ Maybe a ] -> [ a ]
 clear = map (fromMaybe (error "FUBAR")) . filter (isJust)
 
-makeFileHash :: FilePath -> IO ( Maybe ( Hash32, FilePath ))
-makeFileHash f = catch ( makeHash f >>= ( return . Just ) )
+makeHashWrapper :: FilePath -> IO ( Maybe ( Hash32, FilePath ))
+makeHashWrapper f = catch ( makeHash f >>= ( return . Just ) )
                        ( \e -> print (e::SomeException) >> return Nothing )
 
 makeHash :: FilePath -> IO ( Hash32, FilePath )
@@ -96,3 +99,18 @@ roll' ( (k,v) : xs ) y@( (k0,vs) : ys )
     | k == k0   = roll' xs ( (k0,v:vs) : ys )
     | otherwise = roll' xs ( (k,[v]) : y )
 
+rollHashes :: [ FilePath ] -> IO [( Hash32, [ String ] )]
+rollHashes files = foldM rolly [] files
+  where
+  rolly :: Bar -> FilePath -> IO Bar
+  rolly !accum file = do
+    single <- makeHashWrapper file
+    case single of
+      Nothing -> return accum
+      Just hash -> return $ appendHash accum hash
+
+appendHash :: Bar -> ( Hash32, String ) -> Bar
+appendHash [] (kk,vv) = [ (kk,[vv])]
+appendHash ((k,v):xs) new@(kk,vv)
+  | k == kk = (k,vv:v):xs
+  | otherwise = (k,v) : appendHash xs new
