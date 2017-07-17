@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MultiWayIf #-}
 module Main where
 
 import System.IO
@@ -19,9 +20,12 @@ main = do
     args <- getArgs
     files <- filterM doesFileExist args
     putStrLn $ "Analyzing " ++ show ( length files ) ++ " files" ++
-      if length args > length files
-      then " (" ++ show ( length args - length files ) ++ " directories ignored)"
-      else ""
+      if | length args == length files + 1
+           -> " (1 directory ignored)"
+         | length args > length files
+           -> " (" ++ show ( length args - length files ) ++ " directories ignored)"
+         | otherwise
+           -> ""
     hashes <- rollFilter <$> rollHashes files
     sequence_ $ map cleaner hashes
 
