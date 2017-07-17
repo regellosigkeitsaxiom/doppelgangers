@@ -1,23 +1,17 @@
 {-# LANGUAGE BangPatterns #-}
 module Main where
 
-{--
-TODO
-find files with similar caches
-ask whick one should be left (no ncurses, just getLine or something)
-delete others
---}
-
 import System.IO
-import Data.Digest.Murmur32
+import Crypto.Hash.SHA256 as H
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as C8
 import System.Environment
 import Data.Maybe
 import Data.List
 import Control.Exception ( catch
                          , SomeException
                          )
-import System.Directory
+import System.Directory ( removeFile )
 import System.Console.ANSI
 import Text.Read
 import Control.Monad ( foldM )
@@ -26,15 +20,13 @@ import Control.Monad ( foldM )
 main :: IO ()
 main = do
     args <- getArgs
-    --foo <- sequence $ map makeHashWrapper args
-    allHashes <- rollHashes args
-    --let hashes = rollFilter . roll . hSort . clear $ foo
-    let hashes = rollFilter allHashes
+    putStrLn $ "Analyzing " ++ show ( length args ) ++ " files"
+    hashes <- rollFilter <$> rollHashes args
     sequence_ $ map cleaner hashes
 
-cleaner :: ( Hash32, [ FilePath ] ) -> IO ()
+cleaner :: ( B.ByteString, [ FilePath ] ) -> IO ()
 cleaner (h, fs) = do
-    putStrLn "\nFound files with same hashes:"
+    putStrLn "\nFound some doppelgangers (files with same hash):"
     addNumber fs
     setSGR [ Reset, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green ]
     putStr "Only one will be left. Which? "
@@ -56,7 +48,6 @@ deleteRogues :: [ FilePath ] -> FilePath -> IO ()
 deleteRogues fs f = do
     let hangmans = delete f fs
     sequence_ $ map removeFile hangmans
-    
 
 addNumber :: [ String ] -> IO ()
 addNumber s = sequence_ $ map foo $ zip s [1..]
@@ -66,40 +57,28 @@ addNumber s = sequence_ $ map foo $ zip s [1..]
             putStrLn a
             setSGR [ Reset ]
 
-hSort :: (Ord a) => [ (a,b) ] -> [ (a,b) ]
-hSort = sortBy foo
-    where foo a b = compare (fst a) (fst b)
-
-clear :: [ Maybe a ] -> [ a ]
-clear = map (fromMaybe (error "FUBAR")) . filter (isJust)
-
-makeHashWrapper :: FilePath -> IO ( Maybe ( Hash32, FilePath ))
+makeHashWrapper :: FilePath -> IO ( Maybe ( B.ByteString, FilePath ))
 makeHashWrapper f = catch ( makeHash f >>= ( return . Just ) )
                        ( \e -> print (e::SomeException) >> return Nothing )
+  where
+  makeHash :: FilePath -> IO ( B.ByteString, FilePath )
+  makeHash f = do
+    handle <- openFile f ReadMode
+    hash <- H.finalize <$> loop handle H.init
+    return ( hash, f )
+  loop handle !ctx = do
+    bytes <- B.hGet handle (2^20)
+    if C8.null bytes
+    then hClose handle >> return ctx
+    else loop handle $ update ctx bytes
 
-makeHash :: FilePath -> IO ( Hash32, FilePath )
-makeHash f = do
-    h <- B.readFile f
-    return ( hash32 h, f )
-
-type Foo = [( Hash32, String )]
-type Bar = [( Hash32 , [String] )]
+type Bar = [( B.ByteString , [String] )]
 
 rollFilter :: Bar -> Bar
 rollFilter = filter rollPredicate
     where rollPredicate ( _ , a ) = length a > 1
 
-roll :: Foo -> Bar
-roll x = roll' x []
-
-roll' :: Foo -> Bar -> Bar
-roll' [] ys = ys
-roll' ( (k,v) : xs ) [] = roll' xs [ (k,[v]) ]
-roll' ( (k,v) : xs ) y@( (k0,vs) : ys )
-    | k == k0   = roll' xs ( (k0,v:vs) : ys )
-    | otherwise = roll' xs ( (k,[v]) : y )
-
-rollHashes :: [ FilePath ] -> IO [( Hash32, [ String ] )]
+rollHashes :: [ FilePath ] -> IO [( B.ByteString, [ String ] )]
 rollHashes files = foldM rolly [] files
   where
   rolly :: Bar -> FilePath -> IO Bar
@@ -109,7 +88,7 @@ rollHashes files = foldM rolly [] files
       Nothing -> return accum
       Just hash -> return $ appendHash accum hash
 
-appendHash :: Bar -> ( Hash32, String ) -> Bar
+appendHash :: Bar -> ( B.ByteString, String ) -> Bar
 appendHash [] (kk,vv) = [ (kk,[vv])]
 appendHash ((k,v):xs) new@(kk,vv)
   | k == kk = (k,vv:v):xs
