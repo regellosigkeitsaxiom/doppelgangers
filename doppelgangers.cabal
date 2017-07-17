@@ -1,20 +1,28 @@
 name:                doppelgangers
 version:             0.1.0.0
-synopsis:            Simple project template from stack
+synopsis:            Utility for finding and removing duplicate files
 description:         Please see README.md
 homepage:            http://github.com/regellosigkeitsaxiom/doppelgangers
 license:             BSD3
 license-file:        LICENSE
 author:              Author name here
-maintainer:          example@example.com
-copyright:           2015 Author Here
+maintainer:          regellosigkeitsaxiom@yandex.ru
+copyright:           2015 Valentin Shirokov
 category:            Utility
 build-type:          Simple
 cabal-version:       >=1.10
 
 executable doppelgangers
+  ghc-options:         -freverse-errors
+                       -j
+                       -fwarn-unused-imports
+                       -fwarn-name-shadowing
+                       -fwarn-incomplete-uni-patterns
+                       -fwarn-incomplete-patterns
+                       -fforce-recomp
   hs-source-dirs:      src
   main-is:             Main.hs
+  other-modules:       Core
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , directory
