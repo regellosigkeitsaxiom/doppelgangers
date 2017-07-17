@@ -5,23 +5,24 @@ import System.IO
 import Crypto.Hash.SHA256 as H
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C8
-import System.Environment
-import Data.Maybe
-import Data.List
-import Control.Exception ( catch
-                         , SomeException
-                         )
-import System.Directory ( removeFile )
+import System.Environment ( getArgs )
+import Data.List ( delete )
+import Control.Exception ( catch , SomeException)
+import System.Directory ( removeFile, doesFileExist )
 import System.Console.ANSI
-import Text.Read
-import Control.Monad ( foldM )
+import Text.Read ( readMaybe )
+import Control.Monad ( foldM, filterM )
 
 
 main :: IO ()
 main = do
     args <- getArgs
-    putStrLn $ "Analyzing " ++ show ( length args ) ++ " files"
-    hashes <- rollFilter <$> rollHashes args
+    files <- filterM doesFileExist args
+    putStrLn $ "Analyzing " ++ show ( length files ) ++ " files" ++
+      if length args > length files
+      then " (" ++ show ( length args - length files ) ++ " directories ignored)"
+      else ""
+    hashes <- rollFilter <$> rollHashes files
     sequence_ $ map cleaner hashes
 
 cleaner :: ( B.ByteString, [ FilePath ] ) -> IO ()
@@ -29,7 +30,7 @@ cleaner (h, fs) = do
     putStrLn "\nFound some doppelgangers (files with same hash):"
     addNumber fs
     setSGR [ Reset, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green ]
-    putStr "Only one will be left. Which? "
+    putStr "Only one will remain. Which? "
     setSGR [ Reset ]
     hFlush stdout
     x <- getLine
@@ -57,12 +58,12 @@ addNumber s = sequence_ $ map foo $ zip s [1..]
             putStrLn a
             setSGR [ Reset ]
 
-makeHashWrapper :: FilePath -> IO ( Maybe ( B.ByteString, FilePath ))
-makeHashWrapper f = catch ( makeHash f >>= ( return . Just ) )
-                       ( \e -> print (e::SomeException) >> return Nothing )
+makeHash :: FilePath -> IO ( Maybe ( B.ByteString, FilePath ))
+makeHash f = catch ( makeHash_ f >>= ( return . Just ) )
+                          ( \e -> print (e::SomeException) >> return Nothing )
   where
-  makeHash :: FilePath -> IO ( B.ByteString, FilePath )
-  makeHash f = do
+  makeHash_ :: FilePath -> IO ( B.ByteString, FilePath )
+  makeHash_ f = do
     handle <- openFile f ReadMode
     hash <- H.finalize <$> loop handle H.init
     return ( hash, f )
@@ -83,7 +84,7 @@ rollHashes files = foldM rolly [] files
   where
   rolly :: Bar -> FilePath -> IO Bar
   rolly !accum file = do
-    single <- makeHashWrapper file
+    single <- makeHash file
     case single of
       Nothing -> return accum
       Just hash -> return $ appendHash accum hash

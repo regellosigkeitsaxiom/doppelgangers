@@ -8,7 +8,7 @@ let
       , directory, stdenv
       }:
       mkDerivation {
-        pname = "clean-by-hash";
+        pname = "doppelgangers";
         version = "0.1.0.0";
         src = ./.;
         isLibrary = false;
@@ -16,7 +16,7 @@ let
         executableHaskellDepends = [
           ansi-terminal base bytestring cryptohash directory
         ];
-        homepage = "http://github.com/githubuser/clean-by-hash#readme";
+        homepage = "http://github.com/regellosigkeitsaxiom/doppelgangers";
         description = "Simple project template from stack";
         license = stdenv.lib.licenses.bsd3;
       };
