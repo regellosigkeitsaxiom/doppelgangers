@@ -9,7 +9,7 @@ import qualified Data.ByteString.Char8 as C8
 import System.Environment ( getArgs )
 import Data.List ( delete )
 import Control.Exception ( catch , SomeException)
-import System.Directory ( removeFile, doesFileExist )
+import System.Directory ( removeFile, doesFileExist, listDirectory, withCurrentDirectory )
 import System.Console.ANSI
 import Text.Read ( readMaybe )
 import Control.Monad ( foldM, filterM )
@@ -18,16 +18,21 @@ import Control.Monad ( foldM, filterM )
 main :: IO ()
 main = do
     args <- getArgs
-    files <- filterM doesFileExist args
-    putStrLn $ "Analyzing " ++ show ( length files ) ++ " files" ++
-      if | length args == length files + 1
-           -> " (1 directory ignored)"
-         | length args > length files
-           -> " (" ++ show ( length args - length files ) ++ " directories ignored)"
-         | otherwise
-           -> ""
-    hashes <- rollFilter <$> rollHashes files
-    sequence_ $ map cleaner hashes
+    case args of
+      [] -> putStrLn "Please specify one directory or list of files"
+      [a] -> withCurrentDirectory a ( listDirectory a >>= work )
+      _ -> work args
+
+work :: [ FilePath ] -> IO ()
+work allfiles = do
+  files <- filterM doesFileExist allfiles
+  let a = length allfiles - length files
+  putStrLn $ "Analyzing " ++ show ( length files ) ++ " files" ++
+    if | a == 1    -> " (1 directory ignored)"
+       | a == 0    -> ""
+       | otherwise -> " (" ++ show ( length allfiles - length files ) ++ " directories ignored)"
+  hashes <- rollFilter <$> rollHashes files
+  sequence_ $ map cleaner hashes
 
 cleaner :: ( B.ByteString, [ FilePath ] ) -> IO ()
 cleaner (h, fs) = do
