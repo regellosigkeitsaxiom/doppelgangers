@@ -8,6 +8,7 @@ import System.Directory
   , listDirectory
   , withCurrentDirectory
   , doesDirectoryExist
+  , makeAbsolute
   )
 import Control.Monad ( filterM )
 import Data.ByteString ( ByteString )
@@ -22,9 +23,10 @@ main = do
     case args of
       [] -> putStrLn "Please specify one directory or list of files"
       [a] -> do
-        que <- doesDirectoryExist a
+        absolute <- makeAbsolute a
+        que <- doesDirectoryExist absolute
         if que
-        then withCurrentDirectory a ( listDirectory a >>= work )
+        then withCurrentDirectory absolute ( listDirectory absolute >>= work )
         else putStrLn "Giving me one file makes no sense. Give me either directory or list of files."
       _ -> work args
 
