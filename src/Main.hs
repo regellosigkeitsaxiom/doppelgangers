@@ -14,13 +14,19 @@ import Control.Monad ( filterM )
 import Data.ByteString ( ByteString )
 import System.Console.ANSI
 import Text.Read ( readMaybe )
+import Data.List ( nub )
 
 import Core
 
 main :: IO ()
 main = do
     args <- getArgs
-    case args of
+    args_ <- nub <$> mapM makeAbsolute args
+    let diff = length args - length args_
+    if diff > 0
+    then putStrLn $ "Warning: input contain " ++ show diff ++ " synonym names."
+    else return ()
+    case args_ of
       [] -> putStrLn "Please specify one directory or list of files"
       [a] -> do
         absolute <- makeAbsolute a
@@ -28,23 +34,24 @@ main = do
         if que
         then withCurrentDirectory absolute ( listDirectory absolute >>= work )
         else putStrLn "Giving me one file makes no sense. Give me either directory or list of files."
-      _ -> work args
+      _ -> work args_
 
 work :: [ FilePath ] -> IO ()
-work allfiles = do
+work inputfiles = do
+  let allfiles = nub inputfiles
   files <- filterM doesFileExist allfiles
   let a = length allfiles - length files
   putStrLn $ "Analyzing " ++ show ( length files ) ++ " files" ++
     if | a == 1    -> " (1 directory ignored)"
        | a == 0    -> ""
-       | otherwise -> " (" ++ show ( length allfiles - length files ) ++ " directories ignored)"
+       | otherwise -> " (" ++ show a ++ " directories ignored)"
   hashes <- rollFilter <$> rollHashes files
   sequence_ $ map cleaner hashes
 
 cleaner :: ( ByteString, [ FilePath ] ) -> IO ()
 cleaner (h, fs) = do
   putStrLn "\nFound some doppelgangers (files with same hash):"
-  addNumber fs
+  addNumber $ reverse fs
   setSGR [ Reset, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green ]
   putStr "Only one will remain. Which? "
   setSGR [ Reset ]
