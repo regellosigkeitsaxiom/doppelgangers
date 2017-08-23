@@ -61,7 +61,7 @@ cleaner (h, fs) = do
   where
   que :: String -> [ String ] -> Maybe String
   que x y = case readMaybe x :: Maybe Int of
-    Just n -> if length y >= n then Just ( y !! (n-1)) else Nothing
+    Just n -> if length y >= n then Just ( reverse y !! (n-1)) else Nothing
     Nothing -> Nothing
 
 addNumber :: [ String ] -> IO ()
