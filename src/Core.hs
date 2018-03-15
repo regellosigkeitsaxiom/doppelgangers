@@ -12,15 +12,15 @@ import Control.Monad ( foldM )
 
 killMan :: [ FilePath ] -> Maybe FilePath -> IO ()
 killMan fs Nothing = putStrLn "Some error occured. Sparing innocents."
-killMan fs (Just f) = deleteRogues fs f >> ( putStrLn $ f ++ " survived. Others not.")
+killMan fs (Just f) = deleteRogues fs f >> ( putStrLn $ f ++ " survived. Others not." )
 
 deleteRogues :: [ FilePath ] -> FilePath -> IO ()
 deleteRogues fs f = do
     let hangmans = delete f fs
-    sequence_ $ map removeFile hangmans
+    mapM_ removeFile hangmans
 
 makeHash :: FilePath -> IO ( Maybe ( B.ByteString, FilePath ))
-makeHash f = catch ( makeHash_ f >>= ( return . Just ) )
+makeHash f = catch ( Just <$> makeHash_ f )
                           ( \e -> print (e::SomeException) >> return Nothing )
   where
   makeHash_ :: FilePath -> IO ( B.ByteString, FilePath )
@@ -41,7 +41,7 @@ rollFilter = filter rollPredicate
     where rollPredicate ( _ , a ) = length a > 1
 
 rollHashes :: [ FilePath ] -> IO [( B.ByteString, [ String ] )]
-rollHashes files = foldM rolly [] files
+rollHashes = foldM rolly []
   where
   rolly :: Bar -> FilePath -> IO Bar
   rolly !accum file = do

@@ -15,6 +15,7 @@ import Data.ByteString ( ByteString )
 import System.Console.ANSI
 import Text.Read ( readMaybe )
 import Data.List ( nub )
+import Control.Monad
 
 import Core
 
@@ -23,9 +24,8 @@ main = do
     args <- getArgs
     args_ <- nub <$> mapM makeAbsolute args
     let diff = length args - length args_
-    if diff > 0
-    then putStrLn $ "Warning: input contain " ++ show diff ++ " synonym names."
-    else return ()
+    when ( diff > 0 ) $
+      putStrLn $ "Warning: input contain " ++ show diff ++ " synonym names."
     case args_ of
       [] -> putStrLn "Please specify one directory or list of files"
       [a] -> do
@@ -46,7 +46,7 @@ work inputfiles = do
        | a == 0    -> ""
        | otherwise -> " (" ++ show a ++ " directories ignored)"
   hashes <- rollFilter <$> rollHashes files
-  sequence_ $ map cleaner hashes
+  mapM_ cleaner hashes
 
 cleaner :: ( ByteString, [ FilePath ] ) -> IO ()
 cleaner (h, fs) = do
@@ -65,7 +65,7 @@ cleaner (h, fs) = do
     Nothing -> Nothing
 
 addNumber :: [ String ] -> IO ()
-addNumber s = sequence_ $ map foo $ zip s [1..]
+addNumber s = mapM_ foo $ zip s [1..]
   where
   foo (a,b) = do
     putStr $ show b ++ "  "
