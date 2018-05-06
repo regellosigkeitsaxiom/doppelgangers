@@ -10,9 +10,12 @@ import Control.Exception ( catch , SomeException)
 import System.Directory ( removeFile )
 import Control.Monad ( foldM )
 
-killMan :: [ FilePath ] -> Maybe FilePath -> IO ()
-killMan fs Nothing = putStrLn "Some error occured. Sparing innocents."
-killMan fs (Just f) = deleteRogues fs f >> ( putStrLn $ f ++ " survived. Others not." )
+killMan :: [ FilePath ] -> [ FilePath ] -> IO ()
+killMan fs [] = putStrLn "Some error occured. Sparing innocents."
+killMan fs [f] = deleteRogues fs f >> ( putStrLn $ f ++ " survived. Others not." )
+killMan _ fs = do
+  mapM_ removeFile fs
+  putStrLn "Everyone dead. Good."
 
 deleteRogues :: [ FilePath ] -> FilePath -> IO ()
 deleteRogues fs f = do

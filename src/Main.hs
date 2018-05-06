@@ -53,16 +53,18 @@ cleaner (h, fs) = do
   putStrLn "\nFound some doppelgangers (files with same hash):"
   addNumber $ reverse fs
   setSGR [ Reset, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Green ]
-  putStr "Only one will remain. Which? "
+  putStr "Only one will remain. Which? (\"none\" is also an option): "
   setSGR [ Reset ]
   hFlush stdout
   x <- getLine
   killMan fs ( que x fs )
   where
-  que :: String -> [ String ] -> Maybe String
+  que :: String -> [ String ] -> [ String ]
   que x y = case readMaybe x :: Maybe Int of
-    Just n -> if length y >= n then Just ( reverse y !! (n-1)) else Nothing
-    Nothing -> Nothing
+    Just n -> [ reverse y !! (n-1) | length y >= n ]
+    Nothing -> case x of
+      "none" -> y
+      _ -> []
 
 addNumber :: [ String ] -> IO ()
 addNumber s = mapM_ foo $ zip s [1..]
